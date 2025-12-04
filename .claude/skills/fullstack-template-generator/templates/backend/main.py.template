@@ -1,0 +1,110 @@
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+from openai import OpenAI
+from dotenv import load_dotenv
+import os
+
+# Load environment variables
+load_dotenv()
+
+# Initialize FastAPI app
+app = FastAPI()
+
+# Configure CORS for localhost:5173 (Vite default port)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Validate OpenAI API key
+openai_api_key = os.getenv("OPENAI_API_KEY")
+if not openai_api_key:
+    raise ValueError("OPENAI_API_KEY not found in environment variables. Please check your .env file.")
+
+# Initialize OpenAI client
+client = OpenAI(api_key=openai_api_key)
+
+# Request model for chat endpoint
+class ChatRequest(BaseModel):
+    message: str
+    model: str = "gpt-4.1-2025-04-14"
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "message": "What is the capital of France?",
+                "model": "gpt-4-turbo-preview"
+            }
+        }
+
+
+@app.get("/")
+async def root():
+    """Root endpoint to check if the API is running"""
+    return {"message": "FastAPI Backend is running", "status": "healthy"}
+
+
+@app.get("/test")
+async def test():
+    """Test endpoint to verify backend connectivity"""
+    return {"status": "success", "message": "Test endpoint is working!"}
+
+
+@app.post("/chat")
+async def chat(request: ChatRequest):
+    """
+    Chat endpoint that sends messages to OpenAI's ChatCompletion API
+
+    Args:
+        request: ChatRequest object containing the message and optional model
+
+    Returns:
+        JSON response with the AI's reply
+    """
+    # Validate message
+    if not request.message or not request.message.strip():
+        raise HTTPException(status_code=400, detail="Message cannot be empty")
+
+    if len(request.message) > 10000:
+        raise HTTPException(status_code=400, detail="Message too long (max 10000 characters)")
+
+    try:
+        response = client.chat.completions.create(
+            model=request.model,
+            messages=[
+                {"role": "user", "content": request.message}
+            ],
+            max_tokens=2000,
+            temperature=0.7
+        )
+
+        return {
+            "status": "success",
+            "response": response.choices[0].message.content,
+            "model": request.model,
+            "usage": {
+                "prompt_tokens": response.usage.prompt_tokens,
+                "completion_tokens": response.usage.completion_tokens,
+                "total_tokens": response.usage.total_tokens
+            }
+        }
+
+    except Exception as e:
+        error_message = str(e)
+        if "api_key" in error_message.lower():
+            raise HTTPException(status_code=401, detail="Invalid OpenAI API key")
+        elif "rate_limit" in error_message.lower():
+            raise HTTPException(status_code=429, detail="Rate limit exceeded. Please try again later.")
+        elif "model" in error_message.lower():
+            raise HTTPException(status_code=400, detail=f"Invalid model specified: {request.model}")
+        else:
+            raise HTTPException(status_code=500, detail=f"OpenAI API error: {error_message}")
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)

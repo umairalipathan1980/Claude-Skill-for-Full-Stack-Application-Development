@@ -1,0 +1,185 @@
+import { useState } from 'react'
+import axios from 'axios'
+import { AnimatePresence, motion } from 'framer-motion'
+import { Activity, Loader, MessageCircle, Send } from 'lucide-react'
+
+import { Button } from './components/ui/button'
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from './components/ui/card'
+import { Textarea } from './components/ui/textarea'
+
+const API_URL = 'http://localhost:8000'
+
+function App() {
+  const [message, setMessage] = useState('')
+  const [chatResponse, setChatResponse] = useState('')
+  const [testResponse, setTestResponse] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+
+  const handleTest = async () => {
+    try {
+      setLoading(true)
+      setError('')
+      const response = await axios.get(`${API_URL}/test`)
+      setTestResponse(JSON.stringify(response.data, null, 2))
+    } catch (err) {
+      setError(`Test Error: ${err.message}`)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleSendMessage = async () => {
+    if (!message.trim()) {
+      setError('Please enter a message before sending')
+      return
+    }
+
+    try {
+      setLoading(true)
+      setError('')
+      const response = await axios.post(`${API_URL}/chat`, {
+        message,
+        model: 'gpt-4-turbo-preview'
+      })
+      setChatResponse(response.data.response)
+    } catch (err) {
+      setError(`Chat Error: ${err.message}`)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="relative min-h-screen overflow-hidden">
+      <div className="pointer-events-none absolute inset-0 bg-grid-radial opacity-60" aria-hidden="true" />
+      <div className="relative z-10 flex min-h-screen flex-col">
+        <header className="w-full px-4 pt-16 pb-10">
+          <div className="mx-auto max-w-5xl text-center">
+            <p className="text-xs font-semibold uppercase tracking-[0.6em] text-emerald-500/80">
+              Fullstack Starter
+            </p>
+            <h1 className="mt-4 font-serif text-3xl uppercase tracking-[0.3em] text-slate-900 md:text-6xl">
+              FASTAPI + VITE
+            </h1>
+            <p className="mx-auto mt-4 max-w-3xl text-base font-medium italic text-slate-600 md:text-xl">
+              Bootstrap a FastAPI backend and Tailwind-powered React frontend with shadcn/ui components ready to ship.
+            </p>
+          </div>
+        </header>
+        <main className="flex-1 px-4 pb-20">
+          <div className="mx-auto flex max-w-5xl flex-col gap-8">
+            <motion.section
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, ease: 'easeOut' }}
+            >
+              <Card className="border-slate-200 bg-white shadow-[0_30px_60px_rgba(15,23,42,0.12)]">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-xl">
+                    <Activity className="h-5 w-5 text-emerald-500" aria-hidden="true" />
+                    Test Backend Connection
+                  </CardTitle>
+                  <CardDescription>
+                    Hit the FastAPI `/test` endpoint to verify backend connectivity and CORS settings.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <Button
+                    type="button"
+                    onClick={handleTest}
+                    disabled={loading}
+                    className="w-full gap-2"
+                  >
+                    {loading ? (
+                      <>
+                        <Loader className="h-4 w-4 animate-spin" aria-hidden="true" />
+                        Testing...
+                      </>
+                    ) : (
+                      <>
+                        <Activity className="h-4 w-4" aria-hidden="true" />
+                        Ping /test Endpoint
+                      </>
+                    )}
+                  </Button>
+                  {testResponse && (
+                    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
+                      <pre className="whitespace-pre-wrap">{testResponse}</pre>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </motion.section>
+
+            <motion.section
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, ease: 'easeOut', delay: 0.1 }}
+            >
+              <Card className="border-slate-200 bg-white shadow-[0_30px_60px_rgba(15,23,42,0.12)]">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-xl">
+                    <MessageCircle className="h-5 w-5 text-emerald-500" aria-hidden="true" />
+                    Chat with OpenAI
+                  </CardTitle>
+                  <CardDescription>
+                    Send prompts to the FastAPI `/chat` endpoint and stream the enhanced response into this UI.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <Textarea
+                    value={message}
+                    onChange={(event) => setMessage(event.target.value)}
+                    onKeyDown={(event) => event.key === 'Enter' && !event.shiftKey && handleSendMessage()}
+                    placeholder="Ask a question, describe a feature, or say hello..."
+                    disabled={loading}
+                    className="min-h-[140px]"
+                  />
+                  {chatResponse && (
+                    <div className="rounded-2xl border border-emerald-200 bg-emerald-50/60 p-4 text-sm leading-relaxed text-slate-800">
+                      {chatResponse}
+                    </div>
+                  )}
+                </CardContent>
+                <CardFooter className="flex flex-col gap-4">
+                  <Button
+                    onClick={handleSendMessage}
+                    disabled={loading || !message.trim()}
+                    className="w-full gap-2"
+                  >
+                    {loading ? (
+                      <>
+                        <Loader className="h-4 w-4 animate-spin" aria-hidden="true" />
+                        Sending...
+                      </>
+                    ) : (
+                      <>
+                        <Send className="h-4 w-4" aria-hidden="true" />
+                        Send Message
+                      </>
+                    )}
+                  </Button>
+                  <AnimatePresence>
+                    {error && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -6 }}
+                        className="w-full rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-600"
+                      >
+                        {error}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </CardFooter>
+              </Card>
+            </motion.section>
+          </div>
+        </main>
+      </div>
+    </div>
+  )
+}
+
+export default App

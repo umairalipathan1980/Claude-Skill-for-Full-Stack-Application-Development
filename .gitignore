@@ -1,0 +1,5 @@
+# Generated fullstack application
+fullstack-app/
+
+# Python
+__pycache__/
