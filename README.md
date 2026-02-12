@@ -2,8 +2,7 @@
 
 A modern full-stack web application template with FastAPI backend and React (Vite) frontend, featuring OpenAI ChatGPT integration.
 
-**For a detailed explanation of the design and development of this code, see the related article on *Data Science Collective*:  
-https://medium.com/data-science-collective/how-i-created-a-claudes-skill-that-creates-full-stack-ai-applications-4364f1a12c56**
+**For a detailed explanation of the design and development of this code, see the related article on [*Data Science Collective*](https://medium.com/data-science-collective/how-i-created-a-claudes-skill-that-creates-full-stack-ai-applications-4364f1a12c56)**
 
 ## Features
 
